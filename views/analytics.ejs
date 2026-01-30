@@ -67,6 +67,20 @@
         color: #bbb;
         font-weight: 500;
     }
+    /* AI Coach Animations */
+.ai-result-content {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.ai-result-content.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+/* Markdown formatting for AI response */
+.ai-result-content b { color: #4CAF50; }
+.ai-result-content ul { padding-left: 20px; color: #ddd; }
+.ai-result-content li { margin-bottom: 5px; }
 
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
@@ -93,6 +107,29 @@
   <div class="container">
     <h1>Your Analytics</h1>
     <br>
+
+    <div class="chart-container ai-coach-section" style="margin-bottom: 25px; border-left: 5px solid #4CAF50;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    🤖 AI Productivity Coach
+                </h2>
+                <p style="color: #888; margin: 5px 0 0 0; font-size: 0.9rem;">
+                    Get personalized advice based on your last 30 days of study logs.
+                </p>
+            </div>
+            <button id="get-ai-insight" class="btn" style="background: linear-gradient(135deg, #4CAF50, #2E7D32); padding: 10px 20px;">
+                ✨ Analyze My Habits
+            </button>
+        </div>
+
+        <div id="ai-loading" style="display: none; text-align: center; padding: 20px;">
+            <p style="color: #aaa;">Crunching the numbers...</p>
+        </div>
+
+        <div id="ai-result" class="ai-result-content" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #333; line-height: 1.6;">
+            </div>
+    </div>
 
     <div class="top-charts-row">
         <div class="chart-half-width">
@@ -201,6 +238,7 @@
 
   </div>
 
+  <script src="/js/ai-coach.js"></script>
   <script>
     // --- Global Chart Vars ---
     const dailyGoal = Number('<%= user.dailyGoalHours %>') || 5; 

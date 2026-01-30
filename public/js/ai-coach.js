@@ -3,17 +3,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const aiResult = document.getElementById('ai-result');
     const aiLoading = document.getElementById('ai-loading');
   
-    // Safety check: if button doesn't exist on this page, stop.
-    if (!aiBtn) return;
+    if (!aiBtn || !aiResult) {
+        console.error("AI Elements not found in DOM");
+        return;
+    }
   
     aiBtn.addEventListener('click', async () => {
-      console.log("AI Coach: Button clicked");
+      console.log("AI Coach: Button clicked. Sending request...");
       
       // 1. UI Loading State
       aiBtn.disabled = true;
-      aiBtn.innerText = "Analyzing...";
-      aiLoading.style.display = 'block';
+      aiBtn.innerHTML = "Analyzing...";
+      if(aiLoading) aiLoading.style.display = 'block';
+      
+      // Hide previous result while loading
       aiResult.style.display = 'none';
+      aiResult.innerHTML = '';
   
       try {
         // 2. Request to Backend
@@ -22,27 +27,39 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' }
         });
         
+        console.log("Response Status:", response.status);
+
+        // Check if server returned 404 (Route not found)
+        if (response.status === 404) {
+            throw new Error("Server route not found. Did you restart the server?");
+        }
+
         const data = await response.json();
+        console.log("Data received:", data);
   
         // 3. Handle Response
-        if (data.error) {
-          // Use backticks (`) for HTML strings to avoid syntax errors
-          aiResult.innerHTML = <span style="color: #ef4444;">Error: ${data.error}</span>;
-        } else {
-          aiResult.innerHTML = data.analysis;
-        }
+        aiResult.style.display = 'block'; // Make sure container is visible
         
-        aiResult.style.display = 'block';
+        if (data.error) {
+          aiResult.innerHTML = `<div style="color: #ff4444; padding: 10px; background: rgba(255,0,0,0.1); border-radius: 5px;">⚠️ Error: ${data.error}</div>`;
+        } else if (data.analysis) {
+          // Force text color to white to ensure visibility against dark backgrounds
+          aiResult.innerHTML = `<div style="color: #ffffff; line-height: 1.6;">${data.analysis}</div>`;
+        } else {
+          aiResult.innerHTML = `<div style="color: #ffcc00;">⚠️ Received empty response from AI. Try again.</div>`;
+        }
         
       } catch (err) {
         console.error("AI Feature Error:", err);
-        aiResult.innerHTML = <span style="color: #ef4444;">Connection failed. Please try again.</span>;
         aiResult.style.display = 'block';
+        aiResult.innerHTML = `<div style="color: #ff4444; padding: 10px; border: 1px solid #ff4444; border-radius: 5px;">
+            <strong>Connection Failed:</strong> ${err.message}
+        </div>`;
       } finally {
         // 4. Reset UI
         aiBtn.disabled = false;
-        aiBtn.innerText = "Analyze My Habits";
-        aiLoading.style.display = 'none';
+        aiBtn.innerHTML = "✨ Analyze My Habits";
+        if(aiLoading) aiLoading.style.display = 'none';
       }
     });
-  });
+});
