@@ -428,7 +428,29 @@
          </div>
       </div>
     </div>
+<div class="card-panel" style="grid-column: span 2;"> <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="card-title">
+       <span>🤖</span> AI Productivity Coach
+    </div>
+    <button id="get-ai-insight" class="btn-secondary" style="cursor: pointer; background: var(--neon-purple); color: white; border: none;">
+      Analyze My Habits
+    </button>
+  </div>
+  
+  <div id="ai-loading" style="display: none; color: #888; margin-top: 15px; font-style: italic;">
+    Thinking... (this may take a few seconds)
+  </div>
 
+  <div id="ai-result" style="
+      margin-top: 15px;
+      background: rgba(255,255,255,0.05); 
+      padding: 20px; 
+      border-radius: 12px; 
+      line-height: 1.6; 
+      border-left: 4px solid #bc13fe;
+      display: none;">
+  </div>
+</div>
     <%
       const goal = user.dailyGoalHours;
       let focusColor = '#ef4444'; 
@@ -688,6 +710,52 @@
 
   <script src="/js/achievements.js" defer></script>
   <script>
+    // --- ADD THIS NEW BLOCK HERE ---
+  document.addEventListener('DOMContentLoaded', () => {
+    const aiBtn = document.getElementById('get-ai-insight');
+    const aiResult = document.getElementById('ai-result');
+    const aiLoading = document.getElementById('ai-loading');
+
+    if (aiBtn) {
+      console.log("AI Button found!"); // <--- This checks if the button exists
+
+      aiBtn.addEventListener('click', async () => {
+        console.log("Button clicked!"); // <--- This checks if click works
+        
+        // 1. Show Loading State
+        aiBtn.disabled = true;
+        aiBtn.innerText = "Analyzing...";
+        aiLoading.style.display = 'block';
+        aiResult.style.display = 'none';
+
+        try {
+          // 2. Call the Server
+          const response = await fetch('/api/ai-analysis', { method: 'POST' });
+          const data = await response.json();
+
+          // 3. Show Result
+          if (data.error) {
+            aiResult.innerHTML = <span style="color: #ef4444;">${data.error}</span>;
+          } else {
+            aiResult.innerHTML = data.analysis;
+          }
+          aiResult.style.display = 'block';
+          
+        } catch (err) {
+          console.error("AI Error:", err);
+          aiResult.innerText = "Error connecting to AI. Check console (F12) for details.";
+          aiResult.style.display = 'block';
+        } finally {
+          // 4. Reset Button
+          aiBtn.disabled = false;
+          aiBtn.innerText = "Analyze My Habits";
+          aiLoading.style.display = 'none';
+        }
+      });
+    } else {
+      console.error("Could not find button with id 'get-ai-insight'");
+    }
+  });
     // Modal & Form Logic
     const trackModal = document.getElementById('trackModal');
     const openTrackBtn = document.getElementById('open-track-modal');

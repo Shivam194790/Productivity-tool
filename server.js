@@ -9,6 +9,11 @@ const MongoStore = require('connect-mongo');
 const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Initialize AI Client
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
 const dbConnect = require('./lib/dbConnect');
 // Trigger the main app DB connection immediately to warm up the server
 dbConnect().catch(err => console.error("Main DB Connection Error:", err));
@@ -835,5 +840,62 @@ if (!process.env.VERCEL) {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
+
+// AI Analysis Route
+app.post('/api/ai-analysis', authenticateUser, async (req, res) => {
+  try {
+    await dbConnect();
+    const userId = req.session.userId;
+
+    // 1. Fetch User Data
+    const [user, logs] = await Promise.all([
+      User.findById(userId),
+      // Fetch last 30 days of logs for context
+      StudyLog.find({ 
+        userId, 
+        date: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } 
+      }).sort({ date: 1 })
+    ]);
+
+    if (!logs || logs.length === 0) {
+      return res.json({ analysis: "Not enough data to analyze yet. Log some study hours first!" });
+    }
+
+    // 2. Prepare Data for the AI Prompt
+    // We create a simple text summary of the data so the AI can understand it.
+    const logSummary = logs.map(log => 
+      `${new Date(log.date).toISOString().split('T')[0]}: ${log.hours} hours`
+    ).join('\n');
+
+    const prompt = `
+      You are a friendly but strict productivity coach. 
+      The user's name is ${user.name}.
+      Their daily study goal is ${user.dailyGoalHours} hours.
+      
+      Here is their study log for the last 30 days:
+      ${logSummary}
+
+      Please provide a concise analysis (max 200 words) covering:
+      1. What they are doing right (strengths).
+      2. What they are doing wrong (patterns of skipping or low hours).
+      3. One specific actionable tip to improve next week.
+      
+      Talk directly to them ("You..."). Use emojis. Format the output with HTML tags like <b> for bold and <br> for line breaks so it looks good on a website.
+    `;
+
+    // 3. Call the AI
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Or "gemini-1.5-flash"
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // 4. Send back the analysis
+    res.json({ analysis: text });
+
+  } catch (error) {
+    console.error("AI Analysis Error:", error);
+    res.status(500).json({ error: "Failed to generate analysis. Please try again later." });
+  }
+});
 
 module.exports = app;
